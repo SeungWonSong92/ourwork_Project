@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="calMapper">
+	<resultMap id="calResultSet" type="Calendar">
+		<id property="sId" column="SID"/>
+		<result property="eId" column="EID"/>
+		<result property="dId" column="DID"/>
+		<result property="sort" column="SORT"/>
+		<result property="sName" column="SNAME"/>
+		<result property="sDate" column="S_DATE"/>
+		<result property="fDate" column="F_DATE"/>
+		<result property="place" column="PLACE"/>
+		<result property="memo" column="MEMO"/>
+		<result property="status" column="STATUS"/>
+		<result property="sTime" column="S_TIME"/>
+		<result property="fTime" column="F_TIME"/>
+	</resultMap>
+	
+	<!-- 사내 일정 추가 -->
+	<insert id="addEvent" parameterType="Calendar">
+		INSERT INTO SCHEDULE
+		VALUES(SEQ_SID.NEXTVAL, #{eId}, null, 1, #{sName}, #{sDate}, #{fDate}, #{place}, #{memo}, DEFAULT, #{sTime}, #{fTime})
+	</insert>
+	
+	<!-- 사내 일정 조회 -->
+	<select id="selectList" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE STATUS='Y'
+		AND SORT=1
+	</select>
+	
+	<!-- 사내 일정 상세 조회 -->
+	<select id="selectCal" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE SID=#{sId}
+		AND STATUS='Y'
+		AND SORT=1
+	</select>
+	
+	<!-- 사내 일정 삭제 -->
+	<update id="deleteCal">
+		UPDATE SCHEDULE
+		SET STATUS='N'
+		WHERE SID=#{sId}
+	</update>
+	
+	<!-- 팀별 일정 조회 -->
+	<select id="selectTeamCalList" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE STATUS='Y'
+		AND SORT=2
+		AND DID=#{dId}
+	</select>
+	
+	<!-- 개인 일정 조회 -->
+	<select id="selectPersonalList" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE STATUS='Y'
+		AND SORT=3
+		AND EID=#{eId}
+	</select>
+	
+	<!-- 팀 일정 추가 -->
+	<insert id="addTeamEvent" parameterType="Calendar">
+		INSERT INTO SCHEDULE
+		VALUES(SEQ_SID.NEXTVAL, #{eId}, #{dId}, 2, #{sName}, #{sDate}, #{fDate}, #{place}, #{memo}, DEFAULT, #{sTime}, #{fTime})
+	</insert>
+	
+	<!-- 팀 일정 상세 조회 -->
+	<select id="selectTeamCal" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE SID=#{sId}
+		AND STATUS='Y'
+	</select>
+	
+	<!-- 팀 일정 삭제 -->
+	<update id="deleteTeamCal">
+		UPDATE SCHEDULE
+		SET STATUS='N'
+		WHERE SID=#{sId}
+	</update>
+	
+	<!-- 개인 일정 추가 -->
+	<insert id="addPersonalEvent" parameterType="Calendar">
+		INSERT INTO SCHEDULE
+		VALUES(SEQ_SID.NEXTVAL, #{eId}, null, 3, #{sName}, #{sDate}, #{fDate}, #{place}, #{memo}, DEFAULT, #{sTime}, #{fTime})
+	</insert>
+	
+	<!-- 개인 일정 삭제 -->
+	<update id="deletePersonalCal">
+		UPDATE SCHEDULE
+		SET STATUS='N'
+		WHERE SID=#{sId}
+	</update>
+	
+	<!-- 개인 일정 상세 조회 -->
+	<select id="selectPersonalCal" resultMap="calResultSet">
+		SELECT *
+		FROM SCHEDULE
+		WHERE SID=#{sId}
+		AND STATUS='Y'
+	</select>
+	
+	<!-- 사내 일정 수정 -->
+	<update id="updateCal">
+		UPDATE SCHEDULE
+		SET SNAME=#{sName},
+			S_DATE=#{sDate},
+			F_DATE=#{fDate},
+			PLACE=#{place},
+			S_TIME=#{sTime},
+			F_TIME=#{fTime},
+			MEMO=#{memo}
+		WHERE SID=#{sId}
+	</update>
+
+</mapper>

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="memberMapper">
+	<resultMap id="employeeResultSet" type="Employee">
+		<id property="eId" column="EID"/>
+ 		<result property="dId" column="DID"/>
+		<result property="rId" column="RID"/> 
+		<result property="ePwd" column="EPWD"/>
+		<result property="eName" column="ENAME"/>
+		<result property="email" column="EMAIL"/>
+		<result property="phone" column="PHONE"/>
+		<result property="address" column="ADDRESS"/>
+ 		<result property="salary" column="SALARY"/> 
+		<result property="join_date" column="JOIN_DATE"/>
+ 		<result property="leave_date" column="LEAVE_DATE"/> 
+		<result property="status" column="STATUS"/>
+ 		<result property="holiday" column="HOLIDAY"/> 
+ 		<result property="eBirth" column="EBIRTH"/>
+ 		<result property="dName" column="DNAME"/>
+ 		<association property="profile" javaType="Attachment">
+ 			<result property="filePath" column="FILEPATH"/>
+			<result property="originName" column="ORIGINNAME"/>
+	 		<result property="changeName" column="CHANGENAME"/>
+			<result property="fileLevel" column="FILELEVEL"/> 
+ 		</association>	
+ 		
+	</resultMap>
+	
+	<resultMap type="attachment" id="replyattachment">
+		<id column="EID" property="eId" />
+		<result column="ORIGINNAME" property="originName" />
+		<result column="CHANGENAME" property="changeName" />
+		<result column="FILELEVEL" property="fileLevel" />
+	</resultMap>
+	
+	<resultMap id="departmentResultSet" type="Department">
+		<id property="dId" column="DID"/>
+		<result property="dName" column="DNAME"/>
+	</resultMap>
+
+
+	<!-- select -->
+	<select id="selectOne" parameterType="Employee" resultMap="employeeResultSet">		
+        SELECT *
+		FROM ATTACHMENT 
+		RIGHT JOIN EMPLOYEE USING (EID)
+		WHERE EID= #{eId}    
+	</select> 
+	
+	<!-- 회원가입 -->
+	<insert id="insertEmployee" parameterType="Employee">
+		INSERT INTO EMPLOYEE
+		VALUES(#{eId}, NULL, NULL, #{ePwd}, #{eName}, #{email}, #{phone}, #{address}, null, #{join_date}, null, DEFAULT, DEFAULT, #{eBirth})
+	</insert>
+	
+	<!-- 회원수정 -->
+	<update id="updateEmployee" parameterType="Employee">
+		UPDATE EMPLOYEE
+		SET ENAME=#{eName}, EMAIL=#{email}, PHONE=#{phone}, ADDRESS=#{address}, JOIN_DATE=#{join_date}, EBIRTH=#{eBirth}
+		WHERE EID=#{eId}
+	</update>
+		
+	<!-- 중복아이디 -->
+	<select id="idCheck" parameterType="string" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE EID=#{eId}
+	</select>
+	
+	<!-- 중복이메일 -->
+	<select id="emailCheck" parameterType="string" resultType="string">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE EMAIL=#{email}
+	</select>
+	
+	<!-- 파일 저장 -->
+	<insert id="insertAttachment" parameterType="Attachment">
+		INSERT INTO ATTACHMENT
+		VALUES(SEQ_FID.NEXTVAL, NULL, NULL, NULL, NULL, NULL, #{eId}, NULL, #{filePath}, #{originName}, #{changeName}, SYSDATE, 10, DEFAULT)
+	</insert>
+	
+	<!-- 첨부파일 조회 -->
+	<select id="selectAttachment" resultType="Attachment">
+ 		SELECT *
+		FROM ATTACHMENT
+		WHERE EID=#{eId}
+		AND FSTATUS='Y' 
+	</select>
+	
+	<!-- 첨부파일 수정 -->
+	<update id="updateAttachment" parameterType="Attachment">
+		UPDATE ATTACHMENT
+		SET FILEPATH=#{filePath},
+			ORIGINNAME=#{originName},
+			CHANGENAME=#{changeName}
+		WHERE EID=#{eId}
+	</update>
+	
+	<!-- 첨부파일 삭제 -->
+	<update id="deleteAttachment" parameterType="Attachment">
+		DELETE FROM ATTACHMENT
+		WHERE EID=#{eId}
+	</update>
+	
+	<!-- 수정 시 첨부파일 없을 때 INSERT -->
+	<insert id="insertAttachment2" parameterType="Attachment">
+		INSERT INTO ATTACHMENT
+		VALUES(SEQ_FID.NEXTVAL, NULL, NULL, NULL, NULL, NULL, #{eId}, NULL, #{filePath}, #{originName}, #{changeName}, SYSDATE, 10, DEFAULT)
+	</insert>
+	
+	<!-- 출근 시간 등록하기 -->
+	<insert id="employeeWIn" parameterType="Work">
+      INSERT INTO WORK
+      VALUES(SEQ_FID.NEXTVAL, SYSDATE, NULL, #{eId})  
+   </insert>   
+   
+      <!-- 퇴근 시간 등록하기 -->
+   <update id="employeeWOut" parameterType="Work">
+     	UPDATE Work
+     	SET WOUT=SYSDATE
+		WHERE EID=#{eId}
+   </update>   
+   
+   <!-- 주소록 불러오기 -->
+   <select id="selectAllMember" resultMap="employeeResultSet">
+   		SELECT *
+   		FROM EMPLOYEE
+   		JOIN DEPARTMENT USING(DID)
+   		LEFT JOIN ATTACHMENT USING(EID)
+   		WHERE STATUS='Y'
+   		ORDER BY DNAME ASC, ENAME ASC   		
+   </select>
+   
+   <!-- 주소록 검색 -->
+	<select id="selectEmp" resultMap="employeeResultSet">
+		SELECT *
+   		FROM EMPLOYEE
+   		JOIN DEPARTMENT USING(DID)
+   		LEFT JOIN ATTACHMENT USING(EID)
+   		WHERE ENAME=#{eName}
+   		AND STATUS='Y'
+	</select>
+	   
+   	<!-- 리스트 조회 -->	
+   	<select id="selectListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE STATUS='Y'
+	</select>	
+	
+	<select id="selectList" resultMap="employeeResultSet">
+		SELECT *
+		FROM EMPLOYEE
+		WHERE STATUS='Y'
+		ORDER BY CLID DESC
+	</select>
+
+	<!-- 부서 불러오기 -->
+	<select id="selectDepMember" resultMap="departmentResultSet">
+		SELECT *
+		FROM DEPARTMENT
+	</select>
+	
+	<!-- 아이디 찾기 -->
+	<select id="getUserId" resultType="string">
+		SELECT eId
+		FROM EMPLOYEE
+		WHERE ENAME=#{eName}
+		AND EMAIL=#{email}
+		AND STATUS='Y'
+	</select>
+	
+ 		<!-- 비밀번호 수정 -->
+	<select id="getUserPwd" resultType="Employee">
+		SELECT *
+		FROM EMPLOYEE
+		WHERE ENAME=#{eName}
+		AND EID=#{eId}
+		AND EMAIL=#{email} 
+		AND STATUS='Y'	
+	</select> 
+		
+	<!-- 비밀번호 페이지 수정 -->
+	<update id="updatePwd" parameterType="Employee">
+		UPDATE EMPLOYEE
+		SET EPWD=#{ePwd}
+		WHERE EID=#{eId}	
+	</update>
+	
+	<select id="selectEmpById" resultType="Employee">
+		SELECT *
+		FROM EMPLOYEE
+		WHERE EID=#{eId}
+		AND STATUS='Y'
+	</select>
+	
+	<!-- 검색결과 개수 -->
+	<select id="selectSearchListCount" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		LEFT JOIN ATTACHMENT USING(EID)
+		WHERE ENAME LIKE #{sv}
+		AND STATUS='Y'
+	</select>
+	
+	<!-- 검색 결과 -->
+	<select id="selectSearchList" resultMap="employeeResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT *
+		FROM EMPLOYEE
+		JOIN DEPARTMENT USING(DID)
+		LEFT JOIN ATTACHMENT USING(EID)
+		WHERE ENAME LIKE #{sv}
+		AND STATUS='Y'
+	</select>
+	
+	<select id="selectChkId" resultType="_int">
+		SELECT count(*)
+		FROM EMPLOYEE
+		WHERE EID=#{eId}
+	</select>
+</mapper>

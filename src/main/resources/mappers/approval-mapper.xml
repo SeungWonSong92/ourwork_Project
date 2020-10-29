@@ -1,0 +1,621 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="approvalMapper">
+  <resultMap type="Approval" id="approvalResultSet">
+  	<id property="aId" column="AID"/>
+  	<result property="eId" column="EID"/>
+  	<result property="aName" column="ANAME"/>
+  	<result property="aTitle" column="ATITLE"/>
+  	<result property="aStatus" column="ASTATUS"/>
+  	<result property="astartDate" column="ASTARTDATE"/>
+  	<result property="aendDate" column="AENDDATE"/>
+  	<result property="eName" column="ENAME"/>
+  	<result property="dName" column="DNAME"/>
+  	<result property="atNum" column="ATNUM"/>
+  </resultMap>
+  
+  <resultMap type="LineList" id="lListResultSet">
+  	<id property="eId" column="EID"/>
+  	<result property="eName" column="ENAME"/>
+  	<result property="rName" column="RNAME"/>
+  	<result property="dName" column="DNAME"/>
+  	<result property="rNum" column="RNUM"/>
+  	<result property="changeName" column="CHANGENAME"/>
+  </resultMap>
+  
+  <resultMap type="ApprovalPeople" id="aPeopleResultSet">
+  	<id property="eId" column="EID"/>
+  	<result property="eName" column="ENAME"/>
+  	<result property="rName" column="RNAME"/>
+  	<result property="dName" column="DNAME"/>
+  </resultMap>
+  
+  <resultMap type="Line" id="lineResultSet">
+  	<id property="lineId" column="LINEID"/>
+  	<result property="aId" column="AID"/>
+  	<result property="leId" column="EID"/>
+  	<result property="lStatus" column="LSTATUS"/>
+  	<result property="lContent" column="LCONTENT"/>
+  	<result property="lLevel" column="LLEVEL"/>
+  	<result property="lDate" column="LDATE"/>
+  	<result property="eName" column="ENAME"/>
+  	<result property="rName" column="RNAME"/>
+  	<result property="dName" column="DNAME"/>
+  	<result property="changeName" column="CHANGENAME"/>
+  </resultMap>
+  
+  <resultMap type="Holiday" id="holidayResultSet">
+  	<id property="aId" column="AID"/>
+  	<result property="hterm" column="HTERM"/>
+  	<result property="hstartDate" column="STARTDATE"/>
+  	<result property="hendDate" column="ENDDATE"/>
+  	<result property="hReason" column="HREASON"/>
+  </resultMap>
+  
+  <resultMap type="Attachment" id="attachmentResultSet">
+	<id property="fId" column="FID"/>
+  	<result property="aId" column="AID"/>
+  	<result property="eId" column="EID"/>
+  	<result property="filePath" column="FILEPATH"/>
+  	<result property="originName" column="ORIGINNAME"/>
+  	<result property="changeName" column="CHANGENAME"/>
+  	<result property="fileLevel" column="FILELEVEL"/>
+  </resultMap>
+  
+  <resultMap type="lAttachment" id="lattachmentResultSet">
+	<id property="fId" column="FID"/>
+  	<result property="filePath" column="FILEPATH"/>
+  	<result property="originName" column="ORIGINNAME"/>
+  	<result property="changeName" column="CHANGENAME"/>
+  	<result property="fileLevel" column="FILELEVEL"/>
+  	<result property="lineId" column="LINEID"/>
+  </resultMap>
+  
+  <resultMap type="Certificate" id="certificateResultSet">
+  	<id property="aId" column="AID"/>
+  	<result property="cKind" column="CKIND"/>
+  	<result property="cPurpose" column="CPURPOSE"/>
+  	<result property="cNum" column="CNUM"/>
+  	<result property="cSubmission" column="CSUBMISSION"/>
+  	<result property="cSelect" column="CSELECT"/>
+  </resultMap>
+  
+   <resultMap type="Draft" id="DraftResultSet">
+  	<id property="aId" column="AID"/>
+  	<result property="effectiveDate" column="EFFECTIVEDATE"/>
+  	<result property="dContent" column="DCONTENT"/>
+  </resultMap>
+  
+  <resultMap type="Expenditurecc" id="ExpenditureccResultSet">
+  	<id property="aId" column="AID"/>
+  	<result property="eMatters" column="EMATTERS"/>
+  	<result property="eDate" column="EDATE"/>
+  	<result property="ePlace" column="EPLACE"/>
+  	<result property="eStartDate" column="STARTDATE"/>
+  	<result property="eEndDate" column="ENDDATE"/>
+  	<result property="expenditure" column="EXPENDITURE"/>
+  	<result property="account" column="ACCOUNT"/>
+  </resultMap>
+  
+  <select id="selectWList" resultMap="approvalResultSet">
+  SELECT AP.*,EE.ENAME, D.DNAME,(SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	JOIN EMPLOYEE EE ON (AP.EID = EE.EID)
+	JOIN DEPARTMENT D ON (EE.DID = D.DID)
+	WHERE L.EID=#{eId}
+    AND L.LSTATUS='O'
+    AND AP.ASTATUS='I'
+    AND ROWNUM &lt; 6 
+    ORDER BY AP.ASTARTDATE DESC
+  </select>
+  
+  <select id="selectRList" resultMap="approvalResultSet">
+  	SELECT AP.*, (SELECT COUNT(*)
+    		FROM ATTACHMENT AT
+      		JOIN APPROVAL A ON (AT.AID = A.AID)
+            WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE NOT AP.ASTATUS='S'
+  	AND AP.EID=#{eId}
+  	AND ROWNUM &lt; 6
+  	ORDER BY AP.AID DESC
+  </select>
+
+  
+  <select id="selectLineList" resultMap="lListResultSet">
+	  SELECT E.EID, E.ENAME, R.RNAME, D.DNAME,
+	         row_number() over(partition by d.dname order by e.ename) as RNUM, A.CHANGENAME
+      FROM EMPLOYEE E
+      LEFT JOIN ATTACHMENT A ON (E.EID = A.EID)
+      JOIN DEPARTMENT D ON(E.DID = D.DID)
+      JOIN RANK R ON(E.RID = R.RID)
+      WHERE STATUS='Y'
+  </select>
+  
+  <select id="selectEAttachment" resultMap="attachmentResultSet">
+  	 SELECT FID, EID, FILEPATH, ORIGINNAME, CHANGENAME, FILELEVEL
+     FROM ATTACHMENT 
+     WHERE FILELEVEL = 10
+  </select>
+  
+  <select id="selectApprovalPeople" resultMap="aPeopleResultSet">
+  		SELECT E.EID, E.ENAME, R.RNAME, D.DNAME
+  		FROM EMPLOYEE E
+      	JOIN DEPARTMENT D ON(E.DID = D.DID)
+      	JOIN RANK R ON(E.RID = R.RID)
+      	WHERE E.EID=#{eId}
+  </select>
+  
+  <insert id="insertApproval" parameterType="Approval">
+  	INSERT INTO APPROVAL VALUES(
+  		SEQ_AID.NEXTVAL, #{eId}, #{aName}, #{aTitle}, #{aStatus}, SYSDATE, NULL)
+  </insert>
+  
+  <insert id="insertAttachment" parameterType="java.util.List">
+  	INSERT INTO ATTACHMENT(FID, AID, FILEPATH, ORIGINNAME, CHANGENAME, FUPLOADDATE, FILELEVEL)
+  		SELECT SEQ_FID.NEXTVAL AS FID, SEQ_AID.CURRVAL AS AID, FILEPATH, ORIGINNAME, CHANGENAME, SYSDATE, 40
+  		FROM
+  		<foreach collection="list" item="list" open="(" close=")" separator="union all"> 
+  		 SELECT #{list.filePath} AS FILEPATH, 
+  				#{list.originName} AS ORIGINNAME, 
+  				#{list.changeName} AS CHANGENAME
+  			FROM DUAL
+  		</foreach>
+  </insert>
+  
+  <delete id="deleteAttachment">
+  	DELETE FROM ATTACHMENT
+  	WHERE AID=#{aId}
+  </delete>
+  
+  <insert id="insertSaveAttachment" parameterType="java.util.List">
+  	INSERT INTO ATTACHMENT(FID, AID, FILEPATH, ORIGINNAME, CHANGENAME, FUPLOADDATE, FILELEVEL)
+  		SELECT SEQ_FID.NEXTVAL AS FID, T.*, SYSDATE, 40
+  		FROM
+  		<foreach collection="list" item="list" open="(" close=")" separator="union all"> 
+  		 SELECT #{list.aId} AS AID,
+  		 		#{list.filePath} AS FILEPATH, 
+  				#{list.originName} AS ORIGINNAME, 
+  				#{list.changeName} AS CHANGENAME
+  			FROM DUAL
+  		</foreach>T
+  </insert>
+  
+  <select id="selectAttachment" resultMap="attachmentResultSet">
+  	SELECT AT.FID, AT.AID, AT.FILEPATH, AT.ORIGINNAME, AT.CHANGENAME, AT.FILELEVEL
+     FROM ATTACHMENT AT
+     JOIN APPROVAL A ON(A.AID = AT.AID)
+     WHERE AT.AID=#{aId}
+  </select>
+  
+  <insert id="insertLine" parameterType="java.util.List">
+  	INSERT INTO LINE(LINEID, AID, EID, LSTATUS, LLEVEL)
+  		SELECT SEQ_LINEID.NEXTVAL AS LINEID, SEQ_AID.CURRVAL AS AID, EID, LSTATUS, LLEVEL
+  		FROM
+  		<foreach collection="list" item="llist" open="(" close=")" separator="union all"> 
+  		 SELECT #{llist.leId} AS EID, 
+  		 		#{llist.lStatus} AS LSTATUS,
+  				#{llist.lLevel} AS LLEVEL
+  			FROM DUAL
+  		</foreach>
+  </insert>
+  
+   <insert id="insertHoliday" parameterType="Holiday">
+  	INSERT INTO HOLIDAY VALUES(
+  		SEQ_AID.CURRVAL, #{hdType}, #{hterm}, #{hstartDate}, #{hendDate}, #{hReason})
+  </insert>
+  
+  <select id="selectRequestListCount" resultType="_int">
+  	SELECT COUNT(*)
+  	FROM APPROVAL
+  	WHERE NOT ASTATUS='S'
+  	AND EID=#{eId} 
+  </select>
+  
+  <select id="selectRequestiListCount" resultType="_int">
+  	SELECT COUNT(*)
+  	FROM APPROVAL
+  	WHERE ASTATUS='I'
+  	AND EID=#{eId} 
+  </select>
+  
+  <select id="selectRequestyListCount" resultType="_int">
+  	SELECT COUNT(*)
+  	FROM APPROVAL
+  	WHERE ASTATUS='Y'
+  	AND EID=#{eId}
+  </select>
+  
+  <select id="selectRequestnListCount" resultType="_int">
+  	SELECT COUNT(*)
+  	FROM APPROVAL
+  	WHERE ASTATUS='N'
+  	AND EID=#{eId}
+  </select>
+  
+  <select id="selectRequestList" resultMap="approvalResultSet">
+  	SELECT AP.*, (SELECT COUNT(*)
+    		FROM ATTACHMENT AT
+      		JOIN APPROVAL A ON (AT.AID = A.AID)
+            WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE NOT AP.ASTATUS='S'
+  	AND AP.EID=#{eId}
+  	ORDER BY ASTARTDATE DESC, AP.AID DESC
+  </select>
+  
+  <select id="selectRequestiList" resultMap="approvalResultSet">
+  		SELECT AP.*, (SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE AP.ASTATUS='I'
+  	AND AP.EID=#{eId}
+  	ORDER BY AP.AID DESC
+  </select>
+  
+  <select id="selectRequestyList" resultMap="approvalResultSet">
+  		SELECT AP.*, (SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE AP.ASTATUS='Y'
+  	AND AP.EID=#{eId}
+  	ORDER BY AP.AID DESC
+  </select>
+  
+  <select id="selectRequestnList" resultMap="approvalResultSet">
+  	SELECT AP.*, (SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE AP.ASTATUS='N'
+  	AND AP.EID=#{eId}
+  	ORDER BY AP.AID DESC
+  </select>
+  
+  <select id="selectSearchListCount" resultType="_int">
+  	SELECT COUNT(A.AID)
+  	FROM (
+    	SELECT A.AID
+    	FROM APPROVAL A
+	  	JOIN LINE L ON (A.AID = L.AID)
+	  	JOIN EMPLOYEE E ON(A.EID = E.EID)
+	  	JOIN DEPARTMENT D ON(E.DID = D.DID)
+	  	WHERE (L.EID=#{eId} OR A.EID=#{eId})
+	  	AND (A.ASTARTDATE LIKE'%'||#{search}||'%'
+	  	OR A.ANAME LIKE '%'||#{search}||'%'
+	  	OR A.ATITLE LIKE '%'||#{search}||'%'
+	  	OR E.ENAME LIKE '%'||#{search}||'%'
+	  	OR D.DNAME LIKE '%'||#{search}||'%'
+	  	OR A.AENDDATE LIKE '%'||#{search}||'%'
+	  	OR A.ASTATUS LIKE '%'||#{search}||'%')
+	  	GROUP BY A.AID) A
+  </select>
+  
+   <select id="selectSearchList" resultMap="approvalResultSet">
+  	SELECT A.AID, A.EID, A.ANAME, A.ATITLE, A.ASTATUS, A.ASTARTDATE, A.AENDDATE, E.ENAME, D.DNAME
+  	FROM APPROVAL A
+    JOIN LINE L ON (A.AID = L.AID)
+  	JOIN EMPLOYEE E ON(A.EID = E.EID)
+  	JOIN DEPARTMENT D ON(E.DID = D.DID)
+  	WHERE (L.EID=#{eId} OR A.EID=#{eId})
+  	AND (A.ASTARTDATE LIKE'%'||#{search}||'%'
+  	OR A.ANAME LIKE '%'||#{search}||'%'
+  	OR A.ATITLE LIKE '%'||#{search}||'%'
+  	OR E.ENAME LIKE '%'||#{search}||'%'
+  	OR D.DNAME LIKE '%'||#{search}||'%'
+  	OR A.AENDDATE LIKE '%'||#{search}||'%'
+  	OR A.ASTATUS LIKE '%'||#{search}||'%')
+  	GROUP BY A.AID, A.EID, A.ANAME, A.ATITLE, A.ASTATUS, A.ASTARTDATE, A.AENDDATE, E.ENAME, D.DNAME
+  </select>
+  
+  <select id="selectSaveListCount" resultType="_int">
+  	SELECT COUNT(*)
+  	FROM APPROVAL
+  	WHERE ASTATUS='S'
+  	AND EID=#{eId} 
+  </select>
+  
+  <select id="selectSaveList" resultMap="approvalResultSet">
+  	SELECT AP.*, (SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+  	FROM APPROVAL AP
+  	WHERE AP.ASTATUS='S'
+  	AND AP.EID=#{eId}
+  	ORDER BY AP.ASTARTDATE DESC, AP.AID DESC
+  </select>
+  
+  <delete id="deleteSaveApproval">
+  	DELETE FROM APPROVAL
+  	WHERE AID=#{aId}
+  </delete>
+  
+  <delete id="deleteLine">
+  	DELETE FROM LINE
+  	WHERE AID=#{aId}
+  </delete>
+  
+  <select id="selectApproval" resultMap="approvalResultSet">
+  	SELECT A.*, E.ENAME, D.DNAME
+	FROM APPROVAL A
+	JOIN EMPLOYEE E ON(A.EID = E.EID)
+	JOIN DEPARTMENT D ON(E.DID = D.DID)
+  	WHERE AID=#{aId}
+  </select>
+  
+  <select id="selectLine" resultMap="lineResultSet">
+      SELECT L.*, E.ENAME AS ENAME, R.RNAME AS RNAME, D.DNAME AS DNAME, A.CHANGENAME
+     FROM LINE L
+     LEFT JOIN ATTACHMENT A ON (L.EID = A.EID)
+     JOIN EMPLOYEE E ON(L.EID = E.EID)
+     JOIN DEPARTMENT D ON(E.DID = D.DID)
+     JOIN RANK R ON(E.RID = R.RID)
+     WHERE L.AID=#{aId}
+     ORDER BY L.LLEVEL
+  </select>
+  
+  <select id="selectHoliday" resultMap="holidayResultSet">
+  	SELECT *
+  	FROM HOLIDAY
+  	WHERE AID=#{aId}
+  </select>
+  
+  <update id="updateApproval" parameterType="Approval">
+  	UPDATE APPROVAL
+	SET ATITLE=#{aTitle}, ASTATUS=#{aStatus}, ASTARTDATE=SYSDATE
+	WHERE AID=#{aId}		
+  </update>
+  
+  <update id="updateHoliday" parameterType="Holiday">
+  	UPDATE HOLIDAY
+	SET HDTYPE=#{hdType}, HTERM=#{hterm}, STARTDATE=#{hstartDate} ,ENDDATE=#{hendDate} ,HREASON=#{hReason}
+	WHERE AID=#{aId}
+  </update>
+  
+   <delete id="deleteSaveLine">
+  	DELETE FROM LINE
+ 	WHERE AID=#{aId}
+  </delete>
+  
+  <insert id="insertSaveLine" parameterType="java.util.List">
+  	INSERT INTO LINE(LINEID, AID, EID, LSTATUS, LLEVEL)
+  		SELECT SEQ_LINEID.NEXTVAL AS LINEID, AID, EID, LSTATUS, LLEVEL
+  		FROM
+  		<foreach collection="list" item="llist" open="(" close=")" separator="union all"> 
+  		 SELECT #{llist.aId} AS AID,
+  		 		#{llist.leId} AS EID,
+  		 		#{llist.lStatus} AS LSTATUS, 
+  				#{llist.lLevel} AS LLEVEL
+  			FROM DUAL
+  		</foreach>
+  </insert>
+    
+  <select id="selectWaitingListCount" resultType="_int">
+  	SELECT COUNT(*)
+	FROM APPROVAL A
+	JOIN LINE L ON (A.AID=L.AID)
+	WHERE L.EID=#{eId}
+    AND L.LSTATUS='O'
+    AND A.ASTATUS='I'
+  </select>
+  
+  <select id="selectWaitingList" resultMap="approvalResultSet">
+    SELECT AP.*,EE.ENAME, D.DNAME,(SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	JOIN EMPLOYEE EE ON (AP.EID = EE.EID)
+	JOIN DEPARTMENT D ON (EE.DID = D.DID)
+	WHERE L.EID=#{eId}
+    AND L.LSTATUS='O'
+    AND AP.ASTATUS='I'
+    ORDER BY AP.ASTARTDATE DESC
+  </select>
+  
+  <select id="selectRefListCount" resultType="_int">
+  	SELECT COUNT(*)
+	FROM APPROVAL A
+	JOIN LINE L ON (A.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	WHERE L.EID=#{eId}
+	AND L.LLEVEL = 0
+	AND NOT A.ASTATUS='S'
+  </select>
+  
+  <select id="selectRefList" resultMap="approvalResultSet">
+	SELECT AP.*,EE.ENAME, D.DNAME,(SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	JOIN EMPLOYEE EE ON (AP.EID = EE.EID)
+	JOIN DEPARTMENT D ON (EE.DID = D.DID)
+	WHERE L.EID=#{eId}
+	AND L.LLEVEL = 0
+	AND NOT AP.ASTATUS='S'
+	ORDER BY AP.ASTARTDATE DESC
+  </select>
+
+  <delete id="deleteApproval">
+	DELETE FROM APPROVAL
+	WHERE AID=#{aId}
+  </delete>
+  
+  <update id="updateLine">
+  	UPDATE LINE
+  	SET LSTATUS=#{lStatus}, LCONTENT=#{lContent}, LDATE=SYSDATE
+  	WHERE AID=#{aId}
+  	AND EID=#{leId}
+  </update>
+  
+  <insert id="insertLineAttachment" parameterType="java.util.List">
+  	INSERT INTO LINEATTACHMENT(LFID, FILEPATH, ORIGINNAME, CHANGENAME, FUPLOADDATE, FILELEVEL, FSTATUS, LINEID)
+  		SELECT SEQ_LFID.NEXTVAL AS LFID, FILEPATH, ORIGINNAME, CHANGENAME, SYSDATE, FILELEVEL, 'Y', LINEID
+  		FROM
+  		<foreach collection="list" item="list" open="(" close=")" separator="union all"> 
+  		 SELECT #{list.filePath} AS FILEPATH, 
+  				#{list.originName} AS ORIGINNAME, 
+  				#{list.changeName} AS CHANGENAME,
+  				#{list.fileLevel} AS FILELEVEL,
+  				#{list.lineId} AS LINEID
+  			FROM DUAL
+  		</foreach>
+  </insert>
+  
+  <select id="selectReceptionCount" resultType="_int">
+  	SELECT COUNT(*)
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	WHERE L.EID=#{eId}
+    AND NOT AP.ASTATUS='S'
+    AND( L.LSTATUS='Y'
+    OR L.LSTATUS='N')
+  </select>
+  
+  <select id="selectReceptionList" resultMap="approvalResultSet">
+   SELECT AP.*,EE.ENAME, D.DNAME,(SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	JOIN EMPLOYEE EE ON (AP.EID = EE.EID)
+	JOIN DEPARTMENT D ON (EE.DID = D.DID)
+	WHERE L.EID=#{eId}
+    AND NOT AP.ASTATUS='S'
+    AND( L.LSTATUS='Y'
+    OR L.LSTATUS='N')
+    ORDER BY AP.ASTARTDATE DESC
+  </select>
+  
+  <select id="selectExpectedCount" resultType="_int">
+    SELECT COUNT(*)
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	WHERE L.EID=#{eId}
+    AND L.LSTATUS='I'
+    AND NOT L.LLEVEL=0
+    AND AP.ASTATUS='I'
+  </select>
+  
+  <select id="selectExpectedList" resultMap="approvalResultSet">
+     SELECT AP.*,EE.ENAME, D.DNAME,(SELECT COUNT(*)
+    			FROM ATTACHMENT AT
+      			JOIN APPROVAL A ON (AT.AID = A.AID)
+                WHERE A.AID = AP.AID) AS ATNUM
+	FROM APPROVAL AP
+	JOIN LINE L ON (AP.AID=L.AID)
+	JOIN EMPLOYEE E ON (L.EID = E.EID)
+	JOIN EMPLOYEE EE ON (AP.EID = EE.EID)
+	JOIN DEPARTMENT D ON (EE.DID = D.DID)
+	WHERE L.EID=#{eId}
+    AND L.LSTATUS='I'
+    AND NOT L.LLEVEL=0
+    AND AP.ASTATUS='I'
+    ORDER BY AP.ASTARTDATE DESC
+  </select>
+  
+  <update id="updateNoApproval">
+  	UPDATE APPROVAL
+  	SET ASTATUS='N', AENDDATE=SYSDATE
+  	WHERE AID=#{aId}
+  </update>
+  
+  <update id="updateNextLine">
+ 	UPDATE LINE
+    SET LSTATUS='O'
+    WHERE (SELECT LLEVEL
+            FROM LINE
+            WHERE EID=#{leId}
+            AND AID=#{aId})+1 = LLEVEL
+    AND AID=#{aId}
+  </update>
+  
+  <update id="updateYesApproval">
+  UPDATE APPROVAL
+  SET ASTATUS='Y', AENDDATE=SYSDATE
+  WHERE (SELECT LSTATUS
+        FROM LINE
+        WHERE (SELECT MAX(LLEVEL)
+                FROM LINE
+                WHERE AID=#{aId}) = LLEVEL
+         AND AID=#{aId}) = 'Y' 
+  AND AID=#{aId}
+  </update>
+  
+   <insert id="insertCertificate" parameterType="Certificate">
+  	INSERT INTO CERTIFICATE VALUES(
+  		SEQ_AID.CURRVAL, #{cKind}, #{cPurpose}, #{cNum}, #{cSubmission}, #{cSelect})
+  </insert>
+  
+  <update id="updateCertificate" parameterType="Certificate">
+  	UPDATE CERTIFICATE
+	SET CKIND=#{cKind}, CPURPOSE=#{cPurpose}, CNUM=#{cNum} ,CSUBMISSION=#{cSubmission} ,CSELECT=#{cSelect}
+	WHERE AID=#{aId}
+  </update>
+  
+  <select id="selectCertificate" resultMap="certificateResultSet">
+  	SELECT *
+  	FROM CERTIFICATE
+  	WHERE AID=#{aId}
+  </select>
+  
+   <insert id="insertDraft" parameterType="Draft">
+  	INSERT INTO DRAFT VALUES(
+  		SEQ_AID.CURRVAL, #{effectiveDate}, #{dContent})
+  </insert>
+  
+  <update id="updateDraft" parameterType="Draft">
+  	UPDATE DRAFT
+	SET EFFECTIVEDATE=#{effectiveDate}, DCONTENT=#{dContent} 
+	WHERE AID=#{aId}
+  </update>
+  
+   <select id="selectDraft" resultMap="DraftResultSet">
+  	SELECT *
+  	FROM DRAFT
+  	WHERE AID=#{aId}
+  </select>
+  
+  <select id="selectCAttachment" resultMap="attachmentResultSet">
+  	SELECT *
+  	FROM ATTACHMENT
+  	WHERE AID=#{aId}
+  	AND CHANGENAME=#{changeName}
+  </select>
+  
+   <insert id="insertExpend" parameterType="Expenditurecc">
+  	INSERT INTO EXPENDITURECC VALUES(
+  		SEQ_AID.CURRVAL, #{eMatters}, #{eDate}, #{ePlace}, #{eStartDate}, #{eEndDate}, #{expenditure}, #{account})
+  </insert>
+  
+  <update id="updateExpend" parameterType="Expenditurecc">
+  	UPDATE EXPENDITURECC
+	SET EMATTERS=#{eMatters}, EDATE=#{eDate}, EPLACE=#{ePlace}, STARTDATE=#{eStartDate}, ENDDATE=#{eEndDate}, EXPENDITURE=#{expenditure}, ACCOUNT=#{account}
+	WHERE AID=#{aId}
+  </update>
+  
+   <select id="selectExpend" resultMap="ExpenditureccResultSet">
+  	SELECT *
+  	FROM EXPENDITURECC
+  	WHERE AID=#{aId}
+  </select>
+  
+</mapper>

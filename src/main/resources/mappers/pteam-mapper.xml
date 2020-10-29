@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC 
+"-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="pteamMapper">
+	
+	<resultMap id="employeeResultSet" type="Employee1">
+		<id property="eId" column="EID"/>
+ 		<result property="dId" column="DID"/>
+		<result property="rId" column="RID"/> 
+		<result property="ePwd" column="EPWD"/>
+		<result property="eName" column="ENAME"/>
+		<result property="email" column="EMAIL"/>
+		<result property="phone" column="PHONE"/>
+		<result property="address" column="ADDRESS"/>
+ 		<result property="salary" column="SALARY"/> 
+		<result property="join_date" column="JOIN_DATE"/>
+ 		<result property="leave_date" column="LEAVE_DATE"/> 
+		<result property="status" column="STATUS"/>
+ 		<result property="holiday" column="HOLIDAY"/> 
+ 		<result property="eBirth" column="EBIRTH"/>	
+ 		<result property="rName" column="RNAME"/>
+ 		<result property="dName" column="DNAME"/>	
+ 		<result property="wIn" column="WIN"/>	
+ 		<result property="wOut" column="WOUT"/>	
+	</resultMap>
+	
+	<resultMap id="rankResultSet" type="Rank">
+		<id property="rId" column="RID"/>
+		<result property="rName" column="RNAME"/>
+	</resultMap>
+	
+	<resultMap id="departmentResultSet" type="Department">
+		<id property="dId" column="DID"/>
+		<result property="dName" column="DNAME"/>
+	</resultMap>
+	
+	
+	<resultMap id="ceResultSet" type="Certifrcate">
+		<id property="lId" column="LID"/>
+		<result property="eId" column="EID"/>
+		<result property="ce_Name" column="CE_NAME"/>
+		<result property="rating" column="RATING"/>
+		<result property="agency" column="AGENCY"/>
+		<result property="issueDate" column="ISSUEDATE"/>
+		<result property="exprationDate" column="EXPRATIONDATE"/>
+	</resultMap>
+	
+	
+	<resultMap id="CareerResultSet" type="Career">
+		<id property="cId" column="CID"/>
+		<result property="eId" column="EID"/>
+		<result property="c_Department" column="C_DEPARTMENT"/>
+		<result property="rank" column="RANK"/>
+		<result property="employmentDate" column="EMPLOYMENTDATE"/>
+		<result property="resignation" column="RESIGNATION"/>
+		<result property="rectal" column="RECTAL"/>
+	</resultMap>
+	
+	
+	<resultMap id="EducationResultSet" type="Education">
+		<id property="edId" column="EDID"/>
+		<result property="eId" column="EID"/>
+		<result property="sName" column="SNAME"/>
+		<result property="admissonDate" column="ADMISSIONDATE"/>
+		<result property="graduationDay" column="GRADUATIONDAY"/>
+		<result property="sType" column="STYPE"/>
+		<result property="department" column="DEPARTMENT"/>
+		<result property="sdivision" column="SDIVISION"/>
+	</resultMap>
+	
+	
+	
+	<select id="EselectListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE STATUS='Y'
+	</select>
+	
+	<!-- 퇴직사원count -->
+	<select id="NselectListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE STATUS='N'
+	</select>
+	
+	<!--요기요 검색 후 퇴직사원count -->
+	<select id="NselectListCount1" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		JOIN RANK USING(RID)
+        JOIN DEPARTMENT USING(DID)
+		<where>
+			<choose>
+				<when test="searchCondition == 'eName'">
+					AND ENAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'dName'">
+					AND DNAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'rName'">
+					AND RNAME LIKE #{sv}
+				</when>
+			</choose>
+			AND STATUS='N'
+		</where>
+		ORDER BY RID DESC
+	</select>
+	
+	<!-- 퇴직사원 리스트 -->
+	<select id="NselectList" resultMap="employeeResultSet">
+		SELECT EID, DID, RNAME, DNAME, ENAME, EMAIL, PHONE, ADDRESS, SALARY, JOIN_DATE, LEAVE_DATE, HOLIDAY, EBIRTH
+		FROM EMPLOYEE
+        JOIN RANK USING(RID)
+        JOIN DEPARTMENT USING(DID)
+		WHERE STATUS='N'
+		ORDER BY RID DESC
+	</select>
+	
+	
+	<!-- 이거 뭔지 모름 검색 된 퇴직사원 리스트 
+	<select id="NselectList1" resultMap="employeeResultSet">
+		SELECT EID, DID, RNAME, DNAME, ENAME, EMAIL, PHONE, ADDRESS, SALARY, JOIN_DATE, LEAVE_DATE, HOLIDAY, EBIRTH
+		FROM EMPLOYEE
+        JOIN RANK USING(RID)
+        JOIN DEPARTMENT USING(DID)
+		WHERE STATUS='N'
+		ORDER BY RID DESC
+	</select>
+	 -->
+	
+	<select id="EselectList" resultMap="employeeResultSet">
+		SELECT EID, DID, RNAME, DNAME, ENAME, EMAIL, PHONE, ADDRESS, SALARY, JOIN_DATE, LEAVE_DATE, HOLIDAY, EBIRTH
+		FROM EMPLOYEE
+        LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		WHERE STATUS='Y'
+		ORDER BY JOIN_DATE DESC, DNAME ASC, RID ASC
+	</select>
+	
+	<select id="selectOne" parameterType="String" resultMap="employeeResultSet">
+		SELECT EID, DID, RID, RNAME, DNAME, ENAME, EMAIL, PHONE, ADDRESS, SALARY, JOIN_DATE, LEAVE_DATE, HOLIDAY, EBIRTH, STATUS
+		FROM EMPLOYEE
+		LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		WHERE EID=#{eId}
+		AND STATUS='Y'
+	</select>
+	
+	<!-- 요기요 -->
+	<select id="searchList" parameterType="Search" resultMap="employeeResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT * 
+		FROM EMPLOYEE
+		LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		<where>
+			<choose>
+				<when test="searchCondition == 'eName'">
+					AND ENAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'dName'">
+					AND DNAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'rName'">
+					AND RNAME LIKE #{sv}
+				</when>
+			</choose>
+					AND STATUS='Y'
+		</where>
+		ORDER BY RID DESC
+	</select>
+	
+	
+	<!-- 요기요 -->
+	<select id="NselectList1" parameterType="Search" resultMap="employeeResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT * 
+		FROM EMPLOYEE
+		LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		<where>
+			<choose>
+				<when test="searchCondition == 'eName'">
+					AND ENAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'dName'">
+					AND DNAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'rName'">
+					AND RNAME LIKE #{sv}
+				</when>
+			</choose>
+					AND STATUS='N'
+		</where>
+		ORDER BY RID DESC
+	</select>
+	
+	<!-- 퇴사사원 -->
+	<select id="nsearchList" parameterType="Search" resultMap="employeeResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT * 
+		FROM EMPLOYEE
+		LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		<where>
+			<choose>
+				<when test="searchCondition == 'eName'">
+					AND ENAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'dName'">
+					AND DNAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'rName'">
+					AND RNAME LIKE #{sv}
+				</when>
+			</choose>
+			AND STATUS='N'
+		</where>
+		ORDER BY RID DESC
+	</select>
+	
+	
+	<!-- 요기요 재직중 검색 listCount -->
+	<select id="SselectListCount" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		LEFT JOIN RANK USING(RID)
+        LEFT JOIN DEPARTMENT USING(DID)
+		<where>
+			<choose>
+				<when test="searchCondition == 'eName'">
+					AND ENAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'dName'">
+					AND DNAME LIKE #{sv}
+				</when>
+				<when test="searchCondition == 'rName'">
+					AND RNAME LIKE #{sv}
+				</when>
+			</choose>
+			AND STATUS='Y'
+		</where>
+		ORDER BY RID DESC
+	</select>
+	
+	<!-- 직급 list -->
+	<select id="selectrList" resultMap="rankResultSet">
+		SELECT RID, RNAME
+		FROM RANK
+		ORDER BY RID DESC
+	</select>
+	
+	<!-- 부서 list -->
+	<select id="selectdList" resultMap="departmentResultSet">
+		SELECT DID, DNAME
+		FROM DEPARTMENT
+		ORDER BY DID
+	</select>
+	
+	<insert id="insertCe" parameterType="Certifrcate">
+		INSERT INTO CERTIFRCATE
+		VALUES(SEQ_LID.NEXTVAL, #{eId}, #{ce_Name}, #{rating}, #{agency}, #{issueDate}, #{exprationDate})
+	</insert>
+	
+	<select id="selectCe" resultMap="ceResultSet">
+		SELECT *
+		FROM CERTIFRCATE
+		WHERE EID=#{eId}
+	</select>
+	
+	<!-- 자격증 수정 -->
+	<update id="updateCe" parameterType="Certifrcate">
+		UPDATE CERTIFRCATE
+		SET CE_NAME=#{ce_Name},
+			RATING=#{rating},
+			AGENCY=#{agency},
+			ISSUEDATE=#{issueDate},
+			EXPRATIONDATE=#{exprationDate}
+		WHERE EID=#{eId}
+	</update>
+	
+	<!-- 경력 insert -->
+	<insert id="insertCa" parameterType="Career">
+		INSERT INTO CAREER
+		VALUES(SEQ_CID.NEXTVAL, #{eId}, #{c_Department}, #{rnak}, #{employmentDate}, #{resignation}, #{rectal})
+	</insert>
+	
+	
+	<select id="selectCa" resultMap="CareerResultSet">
+		SELECT *
+		FROM CAREER
+		WHERE EID=#{eId}
+	</select>
+	
+	<!-- 고등학교 학력 -->
+	<insert id="insered1" parameterType="Education">
+		INSERT INTO EDUCATION
+		VALUES(SEQ_EDID.NEXTVAL, #{eId}, #{sName}, #{admissonDate}, #{graduationDay}, #{sType}, DEFAULT, 1)
+	</insert>
+	
+	<select id="selectde1" resultMap="EducationResultSet">
+		SELECT *
+		FROM EDUCATION
+		WHERE EID=#{eId}
+		AND SDIVISION=1
+	</select>	
+	
+	<!-- 대학교 학력 -->
+	<insert id="insered2" parameterType="Education">
+		INSERT INTO EDUCATION
+		VALUES(SEQ_EDID.NEXTVAL, #{eId}, #{sName}, #{admissonDate}, #{graduationDay}, #{sType}, #{department}, 2)
+	</insert>
+	
+	
+	<select id="selectde2" resultMap="EducationResultSet">
+		SELECT *
+		FROM EDUCATION
+		WHERE EID=#{eId}
+		AND SDIVISION=2
+	</select>	
+	
+	<!-- 파일 첨부 조회 자격증 식별자 번호 30번입니다. -->
+	<select id="selectAttachment" resultType="Attachment">
+		SELECT * 
+		FROM ATTACHMENT
+		WHERE EID=#{eId}
+		AND FILELEVEL=30
+	</select>
+	
+	<!-- 파일 저장 1번타자!-->
+	<insert id="insertAttachment" parameterType="Attachment">
+		INSERT INTO ATTACHMENT
+		VALUES(SEQ_FID.NEXTVAL, NULL, NULL, NULL, NULL, NULL, #{eId}, NULL, #{filePath}, #{originName}, #{changeName}, SYSDATE, 30, DEFAULT)
+	</insert>
+	
+	<!-- employee 수정 -->
+	<update id="updateEmp" parameterType="Employee">
+		UPDATE EMPLOYEE
+			SET DID=#{dId}, RID=#{rId}, PHONE=#{phone}, ADDRESS=#{address}, JOIN_DATE=#{join_date}
+		WHERE EID=#{eId}
+	</update>
+	
+	<!--  ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
+	<update id="updateEmp1" parameterType="Employee">
+		UPDATE EMPLOYEE
+			SET DID=#{dId}, RID=#{rId}, PHONE=#{phone}, ADDRESS=#{address}, SALARY=#{salary}
+		WHERE EID=#{eId}
+	</update> -->
+	
+	<update id="updateAttachment" parameterType="Attachment">
+		UPDATE ATTACHMENT
+		SET FILEPATH=#{filePath},
+			ORIGINNAME=#{originName},
+			CHANGENAME=#{changeName}
+		WHERE EID=#{eId}
+		AND FILELEVEL=30
+	</update>
+	
+	<insert id="insertDept" parameterType="Department">
+		INSERT INTO DEPARTMENT
+		VALUES(SEQ_DID.NEXTVAL, #{dName})
+	</insert>
+	
+	<delete id="deleteDept" parameterType="_int">
+		DELETE FROM DEPARTMENT
+		WHERE DID=#{dId}
+	</delete>
+	
+	<!-- 승인대기 사원list 뽑기 -->
+	<select id="iselect" resultMap="employeeResultSet">
+		SELECT *
+		FROM EMPLOYEE
+		WHERE STATUS='I'
+	</select>
+	
+	<!-- 재직중인 부서 -->
+	<select id="Empl2" resultMap="employeeResultSet">
+		SELECT *
+		FROM EMPLOYEE
+		WHERE DID=#{dId}
+	</select>
+	
+	<update id="updateEmpi" parameterType="Employee">
+		UPDATE EMPLOYEE
+		SET STATUS='Y'
+		WHERE EID=#{eId}
+	</update>
+	
+	<select id="searchAttend" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		JOIN DEPARTMENT USING(DID)
+		JOIN WORK USING(EID)
+		WHERE DNAME=#{dName}
+		AND WIN LIKE '%' || #{searchday} || '%'
+	</select>
+	
+	
+	<select id="selectAttend" resultMap="employeeResultSet">
+		SELECT EID, DID, RID, DNAME, ENAME, EMAIL, PHONE, ADDRESS, SALARY, JOIN_DATE, LEAVE_DATE, HOLIDAY, EBIRTH, STATUS, WIN, WOUT
+		FROM EMPLOYEE
+		JOIN DEPARTMENT USING(DID)
+		JOIN WORK USING(EID)
+		WHERE DNAME=#{dName}
+		AND WIN LIKE '%' || #{searchday} || '%'
+		AND STATUS='Y'
+		ORDER BY ENAME
+	</select>
+	
+	<select id="Attend" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		JOIN DEPARTMENT USING(DID)
+		JOIN WORK USING(EID)
+		WHERE WIN LIKE '%' || #{searchday} || '%'
+	</select>
+	
+	
+	<!-- employee 퇴사 수정 -->
+	<update id="updatedeemp" parameterType="Employee">
+		UPDATE EMPLOYEE
+			SET STATUS='N'
+		WHERE EID=#{eId}
+	</update>
+	
+</mapper>

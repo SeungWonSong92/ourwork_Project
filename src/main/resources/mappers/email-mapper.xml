@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="emailMapper">
+	<resultMap type="RsEmail" id="emailResultSet">
+		<id property="mId" column="MID"/>
+		<result property="eeId" column="EEID"/>
+		<result property="mTitle" column="MTITLE"/>
+		<result property="mContent" column="MCONTENT"/>
+		<result property="mReceipt" column="MRECEIPT"/>
+		<result property="sendDate" column="SENDDATE"/>
+		<result property="mStatus" column="MSTATUS"/>
+		<result property="sendStatus" column="SENDSTATUS"/>
+		<result property="mLevel" column="MLEVEL"/>
+		<result property="reId" column="REID"/>
+		<result property="erLevel" column="ERLEVEL"/>
+		<result property="receiveDate" column="RECEIVE_DATE"/>
+		<result property="eName" column="ENAME"/>
+		<result property="dName" column="DNAME"/>
+	</resultMap>
+	
+	<resultMap type="EmailAddr" id="empResultSet">
+		<id property="eId" column="EID"/>
+		<result property="dId" column="DID"/>
+		<result property="rId" column="RID"/>
+		<result property="ePwd" column="EPWD"/>
+		<result property="eName" column="ENAME"/>
+		<result property="email" column="EMAIL"/>
+		<result property="phone" column="PHONE"/>
+		<result property="address" column="ADDRESS"/>
+		<result property="salary" column="SALARY"/>
+		<result property="joinDate" column="JOIN_DATE"/>
+		<result property="leaveDate" column="LEAVE_DATE"/>
+		<result property="status" column="STATUS"/>
+		<result property="holiday" column="HOLIDAY"/>
+		<result property="eBirth" column="EBIRTH"/>
+		<result property="rName" column="RNAME"/>
+		<result property="dName" column="DNAME"/>
+		<result property="rNum" column="rnum"/>
+	</resultMap>
+	
+	<resultMap type="Ereceiver" id="receiverResultSet">
+		<result property="mId" column="MID"/>
+		<result property="eId" column="EID"/>
+		<result property="erLevel" column="ERLEVEL"/>
+		<result property="receiveDate" column="RECEIVE_DATE"/>
+		<result property="rStatus" column="RSTATUS"/>
+	</resultMap>
+	<resultMap type="Email" id="checkResultSet">
+		<id property="mId" column="MID"/>
+		<result property="eeId" column="EEID"/>
+		<result property="mTitle" column="MTITLE"/>
+		<result property="mContent" column="MCONTENT"/>
+		<result property="mReceipt" column="MRECEIPT"/>
+		<result property="sendDate" column="SENDDATE"/>
+		<result property="mStatus" column="MSTATUS"/>
+		<result property="sendStatus" column="SENDSTATUS"/>
+		<result property="mLevel" column="MLEVEL"/>
+		<result property="sStatus" column="SSTATUS"/>
+		<result property="tStatus" column="TSTATUS"/>
+	</resultMap>
+	<resultMap type="attachment" id="attachmentResultSet">
+	<id property="fId" column="FID"/>
+  	<result property="mId" column="MID"/>
+  	<result property="filePath" column="FILEPATH"/>
+  	<result property="originName" column="ORIGINNAME"/>
+  	<result property="changeName" column="CHANGENAME"/>
+  	<result property="fileLevel" column="FILELEVEL"/>
+  </resultMap>
+	
+	<!-- 받은메일리스트 개수 -->
+	<select id="selectReceiveListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		WHERE R.EID = #{id}
+		AND SENDSTATUS = 'Y'
+		AND MSTATUS = 'Y'
+		AND R.RSTATUS = 'Y'
+	</select>
+	
+	<!-- 보낸메일리스트 개수 -->
+	<select id="selectSendListCount" resultType="_int">
+		SELECT COUNT(DISTINCT E.MID)
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+		WHERE E.EID = #{id}
+		AND SENDSTATUS = 'Y'
+		AND MSTATUS = 'Y'
+		AND E.SSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+	</select>
+	
+	<!-- 임시저장리스트 개수 -->
+	<select id="selectTempListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+		LEFT JOIN EMPLOYEE L ON(R.EID = L.EID)
+		LEFT JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{id}
+		AND SENDSTATUS = 'N'
+		AND E.MSTATUS = 'Y'
+		AND E.TSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+		AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+        OR (R.EID IS NULL AND E.TSTATUS = 'Y')
+	</select>
+	
+	<!-- 받은메일리스트 목록 셀렉트 -->
+	<select id="selectReceiveList" resultMap = "emailResultSet">
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(E.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE R.EID = #{id}
+		AND SENDSTATUS = 'Y'
+		AND E.MSTATUS = 'Y'
+		AND R.RSTATUS = 'Y'
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	
+	<!-- 보낸메일리스트 목록 셀렉트 -->
+	<select id="selectSendList" resultMap = "emailResultSet">
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(R.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{eeId}
+		AND SENDSTATUS = 'Y'
+		AND E.MSTATUS = 'Y'
+		AND E.SSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+        AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	
+	<!-- 임시저장메일리스트 목록 셀렉트 -->
+	<select id="selectTempList" resultMap = "emailResultSet">
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				E.SSTATUS, E.TSTATUS, R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+        LEFT JOIN EMPLOYEE L ON(R.EID = L.EID)
+		LEFT JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{id}
+		AND SENDSTATUS = 'N'
+		AND E.MSTATUS = 'Y'
+		AND E.TSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+		AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+         OR (R.EID IS NULL AND E.TSTATUS = 'Y')
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	
+	<select id="selectEmpListCount" resultType="_int">
+		SELECT COUNT(*)
+		FROM EMPLOYEE
+		WHERE STATUS='Y'
+	</select>
+	
+	<select id="selectEmpAddrList" resultMap="empResultSet">
+		SELECT E.EID, E.DID, E.RID, E.EPWD, E.ENAME, E.EMAIL,
+				E.PHONE, E.ADDRESS, E.SALARY, E.JOIN_DATE, E.LEAVE_DATE,
+				E.STATUS, E.HOLIDAY, E.EBIRTH, R.RNAME, D.DNAME,
+                row_number() over(partition by d.dname order by e.ename) as rnum
+		FROM EMPLOYEE E
+		JOIN DEPARTMENT D ON(E.DID = D.DID)
+		JOIN RANK R ON(E.RID = R.RID)
+		WHERE STATUS='Y'
+	</select>
+	
+	<select id="sEmailDetail" parameterType="_int" resultMap="emailResultSet">
+		SELECT *
+		FROM EMAIL
+		WHERE MID = #{mId}
+	</select>
+	
+	<select id="receiverList" resultMap = "receiverResultSet">
+		SELECT *
+		FROM ERECEIVER
+		WHERE MID = #{mId}
+		AND ERLEVEL = 1
+	</select>
+	<select id="refList" resultMap = "receiverResultSet">
+		SELECT *
+		FROM ERECEIVER
+		WHERE MID = #{mId}
+		AND ERLEVEL = 2
+	</select>
+	<select id="hideList" resultMap = "receiverResultSet">
+		SELECT *
+		FROM ERECEIVER
+		WHERE MID = #{mId}
+		AND ERLEVEL = 3
+	</select>
+	
+	<select id="selectSendId" resultType="string">
+		SELECT EID
+		FROM EMAIL
+		WHERE MID=#{mid}
+	</select>
+	
+	<!-- insert 이메일 -->
+	<insert id="insertEmail" parameterType="Email">
+		INSERT INTO EMAIL VALUES(
+			SEQ_MID.NEXTVAL, #{eeId}, #{mTitle}, #{mContent},
+			DEFAULT, SYSDATE, DEFAULT, DEFAULT, 10, DEFAULT, DEFAULT)
+	</insert>
+	<insert id="insertRec" parameterType="java.util.List">
+			<foreach collection="list" item="rlist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS)
+		VALUES (SEQ_MID.CURRVAL, #{rlist.eId}, 1, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="insertRef" parameterType="java.util.List">
+			<foreach collection="list" item="flist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS)
+		VALUES (SEQ_MID.CURRVAL, #{flist.eId}, 2, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="insertHid" parameterType="java.util.List">
+			<foreach collection="list" item="hlist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS)
+		VALUES (SEQ_MID.CURRVAL, #{hlist.eId}, 3, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="insertAttachment" parameterType="java.util.List">
+		INSERT INTO ATTACHMENT(FID, MID, FILEPATH, ORIGINNAME, CHANGENAME, FUPLOADDATE, FILELEVEL)
+  		SELECT SEQ_FID.NEXTVAL AS FID, SEQ_MID.CURRVAL AS MID, T.*, SYSDATE, 30
+  		FROM
+  		<foreach collection="list" item="alist" open="(" close=")" separator="union all"> 
+  		 SELECT #{alist.filePath} AS FILEPATH, 
+  				#{alist.originName} AS ORIGINNAME, 
+  				#{alist.changeName} AS CHANGENAME
+  			FROM DUAL
+  		</foreach>T
+	</insert>
+	
+	<!-- insert 임시저장 -->
+	<insert id="insertTemp" parameterType="Email">
+		INSERT INTO EMAIL VALUES(
+			SEQ_MID.NEXTVAL, #{eeId}, #{mTitle}, #{mContent},
+			DEFAULT, SYSDATE, DEFAULT, 'N', 10, DEFAULT, DEFAULT
+		)
+	</insert>
+	
+	<!-- *** 임시저장 하는것들 *** -->
+	<!-- 임시저장 전에 있는지 확인 -->
+	<select id="checkmId" resultMap = "checkResultSet">
+		SELECT *
+		FROM EMAIL
+		WHERE EID = #{id}
+	</select>
+	<!-- 받는사람 삭제 후 재등록 할것임 -->
+	<delete id="deleteReceiver" parameterType="_int">
+		DELETE FROM ERECEIVER
+		WHERE MID=#{m}
+	</delete>
+	<!-- 임시저장되어있는 메일 제목, 내용 수정  -->
+	<update id="againTemp" parameterType="Email">
+		UPDATE EMAIL
+		SET MTITLE=#{mTitle},
+		    MCONTENT=#{mContent},
+		    SENDDATE=SYSDATE
+		WHERE MID=#{mId}
+	</update>
+	<insert id="updateTempRec" parameterType="java.util.List">
+			<foreach collection="list" item="rlist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS) VALUES (#{rlist.mId}, #{rlist.eId}, 1, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="updateTempRef" parameterType="java.util.List">
+			<foreach collection="list" item="flist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS) VALUES (#{flist.mId}, #{flist.eId}, 2, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="updateTempHid" parameterType="java.util.List">
+			<foreach collection="list" item="hlist" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" "> 
+		INTO ERECEIVER (MID, EID, ERLEVEL, RECEIVE_DATE, RSTATUS) VALUES (#{hlist.mId}, #{hlist.eId}, 3, NULL, DEFAULT)
+		</foreach>
+	</insert>
+	<insert id="insertSaveAttachment" parameterType="java.util.List">
+  	INSERT INTO ATTACHMENT(FID, MID, FILEPATH, ORIGINNAME, CHANGENAME, FUPLOADDATE, FILELEVEL)
+  		SELECT SEQ_FID.NEXTVAL AS FID, T.*, SYSDATE, 30
+  		FROM
+  		<foreach collection="list" item="alist" open="(" close=")" separator="union all"> 
+  		 SELECT #{alist.mId} AS MID,
+  		 		#{alist.filePath} AS FILEPATH, 
+  				#{alist.originName} AS ORIGINNAME, 
+  				#{alist.changeName} AS CHANGENAME
+  			FROM DUAL
+  		</foreach>T
+  	</insert>
+  	<delete id="deleteAttachment">
+	  	DELETE FROM ATTACHMENT
+	  	WHERE MID=#{mId}
+	</delete>
+	<!-- 임시저장 이제 전송하는거다!! -->
+	<update id="updateTempToSend" parameterType="Email">
+		UPDATE EMAIL
+		SET MTITLE=#{mTitle},
+		    MCONTENT=#{mContent},
+		    SENDSTATUS='Y',
+		    SENDDATE=SYSDATE
+		WHERE MID=#{mId}
+	</update>
+	
+	<!-- 받은메일함 검색 -->
+	<select id="searchR" parameterType="SearchEmail" resultMap="emailResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(E.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE R.EID = #{eId}
+		AND SENDSTATUS = 'Y'
+		AND E.MSTATUS = 'Y'
+		AND R.RSTATUS = 'Y'
+        AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT  LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	<select id="searchReceiveEmailCount" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(*)
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(E.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE R.EID = #{eId}
+		AND SENDSTATUS = 'Y'
+		AND MSTATUS = 'Y'
+		AND R.RSTATUS = 'Y'
+		AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+	</select>
+	
+	<!-- 보낸 메일 검색 -->
+	<select id="searchRefEmailCount" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(DISTINCT E.MID)
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+		LEFT JOIN EMPLOYEE L ON(R.EID = L.EID)
+		LEFT JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{eId}
+		AND SENDSTATUS = 'Y'
+		AND MSTATUS = 'Y'
+		AND E.SSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+        AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+        AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+	</select>
+	<select id="searchF" parameterType="SearchEmail" resultMap="emailResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(R.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{eId}
+		AND SENDSTATUS = 'Y'
+		AND E.MSTATUS = 'Y'
+		AND E.SSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+        AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+        AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	
+	<!-- 임시저장 메일 검색 -->
+	<select id="searchHidEmailCount" resultType="_int">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT COUNT(*)
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+		LEFT JOIN EMPLOYEE L ON(R.EID = L.EID)
+		LEFT JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{eId}
+		AND SENDSTATUS = 'N'
+		AND E.MSTATUS = 'Y'
+		AND E.TSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+		AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+        AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+        OR (R.EID IS NULL AND E.TSTATUS = 'Y')
+	</select>
+	<select id="searchH" parameterType="SearchEmail" resultMap="emailResultSet">
+		<bind name="sv" value="'%' + _parameter.getSearchValue() + '%'"/>
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		LEFT JOIN ERECEIVER R ON(E.MID = R.MID)
+		LEFT JOIN EMPLOYEE L ON(R.EID = L.EID)
+		LEFT JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE E.EID = #{eId}
+		AND SENDSTATUS = 'N'
+		AND E.MSTATUS = 'Y'
+		AND E.TSTATUS = 'Y'
+		AND R.ERLEVEL = 1
+		AND (E.MID, R.EID) IN (SELECT MID, MIN(EID)
+                                FROM ERECEIVER
+                                WHERE ERLEVEL = 1
+                                GROUP BY MID)
+        AND (E.MTITLE LIKE #{sv}
+            OR E.MCONTENT LIKE #{sv}
+            OR E.EID  LIKE #{sv}
+            OR L.ENAME LIKE #{sv}
+            OR D.DNAME LIKE #{sv})
+        OR (R.EID IS NULL AND E.TSTATUS = 'Y')
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+	
+	<!-- 받은메일함 선택삭제 -->
+	<update id="deleteR" parameterType="java.util.List">
+	    <foreach collection="list" item="rlist" separator=";" open="DECLARE BEGIN" close="; END;">
+	        UPDATE ERECEIVER
+	        SET RSTATUS = 'N'
+	        WHERE MID = #{rlist.mId}
+	        AND EID = #{rlist.eeId}
+	    </foreach>
+	</update>
+	
+	<!-- 보낸메일함 삭제 -->
+	<update id="deleteS" parameterType="java.util.List">
+	    <foreach collection="list" item="slist" separator=";" open="DECLARE BEGIN" close="; END;">
+	        UPDATE EMAIL
+	        SET SSTATUS = 'N'
+	        WHERE MID = #{slist.mId}
+	    </foreach>
+	</update>
+	
+	<!-- 임시저장 메일함 선택삭제 -->
+	<update id="deleteT" parameterType="java.util.List">
+	    <foreach collection="list" item="tlist" separator=";" open="DECLARE BEGIN" close="; END;">
+	        UPDATE EMAIL
+	        SET TSTATUS = 'N'
+	        WHERE MID = #{tlist.mId}
+	    </foreach>
+	</update>
+	<delete id="deleteTreceiver" parameterType="java.util.List">
+		<foreach collection="list" item="elist" separator=";" open="DECLARE BEGIN" close="; END;">
+	        DELETE FROM ERECEIVER
+			WHERE MID=#{elist.mId}
+	    </foreach>
+	</delete>
+	<select id="atList" resultMap="attachmentResultSet">
+		SELECT *
+		FROM ATTACHMENT
+		WHERE MID = #{mId}
+	</select>
+	
+	<!-- 답장 -->
+	<select id="reply" resultMap="emailResultSet">
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		WHERE E.MID = #{mId}
+	</select>
+	
+	<!-- <select id="selectafList" parameterType="java.util.List" resultType="Attachment">
+	<foreach collection="list" item="afList" index="index">
+		SELECT * FROM ATTACHMENT
+		WHERE MID=#{mId}
+		AND CHANGENAME=#{changeName}
+	</foreach>
+	</select> -->
+	<select id="selectafaf" resultMap="attachmentResultSet">
+		SELECT *
+		FROM ATTACHMENT
+		WHERE MID = #{mId}
+		AND CHANGENAME = #{changeName}
+	</select>
+	
+	<!-- 홈 ! 받은메일리스트 목록 셀렉트 -->
+	<select id="selectReceiveListHome" resultMap = "emailResultSet">
+		SELECT E.MID, E.EID AS EEID, E.MTITLE, E.MCONTENT, E.MRECEIPT, E.SENDDATE, E.MSTATUS, E.SENDSTATUS, E.MLEVEL,
+				R.MID, R.EID AS REID, R.ERLEVEL, R.RECEIVE_DATE, L.ENAME, D.DNAME
+		FROM EMAIL E
+		JOIN ERECEIVER R ON(E.MID = R.MID)
+		JOIN EMPLOYEE L ON(E.EID = L.EID)
+		JOIN DEPARTMENT D ON(L.DID = D.DID)
+		WHERE R.EID = #{id}
+		AND SENDSTATUS = 'Y'
+		AND E.MSTATUS = 'Y'
+		AND R.RSTATUS = 'Y'
+		ORDER BY SENDDATE DESC, E.MID DESC, R.ERLEVEL ASC, REID ASC
+	</select>
+</mapper>
